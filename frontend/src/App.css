@@ -1,0 +1,18 @@
+/* Additional component-specific styles */
+.thermal-ticket {
+  width: 300px;
+  margin: 0 auto;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #000;
+  background: #fff;
+  padding: 16px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+}
+.thermal-ticket hr {
+  border-top: 1px dashed #000;
+  opacity: 1;
+  margin: 8px 0;
+}

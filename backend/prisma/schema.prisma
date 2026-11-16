@@ -1,0 +1,750 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model EmpresaConfig {
+  id                       Int      @id @default(1)
+  nombre                   String   @default("Mi Carwash") @db.VarChar(150)
+  razon_social             String?  @db.VarChar(180)
+  ruc                      String?  @db.VarChar(30)
+  direccion                String?  @db.VarChar(255)
+  telefono                 String?  @db.VarChar(40)
+  email                    String?  @db.VarChar(120)
+  web                      String?  @db.VarChar(150)
+  logo                     String?  @db.VarChar(255)
+  moneda_codigo            String   @default("PEN") @db.VarChar(5)
+  moneda_simbolo           String   @default("S/") @db.VarChar(8)
+  simbolo_posicion         String   @default("antes") @db.VarChar(10)
+  decimales                Int      @default(2)
+  sep_decimal              String   @default(".") @db.Char(1)
+  sep_miles                String   @default(",") @db.Char(1)
+  impuesto_nombre          String   @default("IGV") @db.VarChar(20)
+  impuesto_porcentaje      Decimal  @default(18.00) @db.Decimal(5, 2)
+  precios_incluyen_impuesto Int     @default(1)
+  zona_horaria             String   @default("America/Lima") @db.VarChar(50)
+  formato_fecha            String   @default("d/m/Y") @db.VarChar(20)
+  prefijo_orden            String   @default("OS-") @db.VarChar(10)
+  pie_ticket               String?  @default("Gracias por su preferencia") @db.VarChar(255)
+  updated_at               DateTime @default(now()) @updatedAt
+
+  @@map("empresa_config")
+}
+
+model Rol {
+  id       Int       @id @default(autoincrement())
+  nombre   String    @unique @db.VarChar(50)
+  permisos String    @db.Text
+  usuarios Usuario[]
+
+  @@map("roles")
+}
+
+model Usuario {
+  id            Int       @id @default(autoincrement())
+  nombre        String    @db.VarChar(120)
+  usuario       String    @unique @db.VarChar(50)
+  email         String?   @db.VarChar(120)
+  password      String    @db.VarChar(255)
+  rol_id        Int
+  estado        Int       @default(1)
+  ultimo_acceso DateTime?
+  created_at    DateTime  @default(now())
+  rol           Rol       @relation(fields: [rol_id], references: [id])
+
+  @@map("usuarios")
+}
+
+model Cliente {
+  id               Int                @id @default(autoincrement())
+  tipo_doc         String             @default("DNI") @db.VarChar(10)
+  nro_doc          String?            @db.VarChar(20)
+  nombre           String             @db.VarChar(150)
+  telefono         String?            @db.VarChar(30)
+  email            String?            @db.VarChar(120)
+  direccion        String?            @db.VarChar(200)
+  notas            String?            @db.Text
+  fecha_nacimiento DateTime?          @db.Date
+  acepta_marketing Int                @default(1)
+  estado           Int                @default(1)
+  created_at       DateTime           @default(now())
+  vehiculos        Vehiculo[]
+  ordenes          Orden[]
+  citas            Cita[]
+  paquetes         ClientePaquete[]
+  puntos           CrmPunto[]
+  cupones          CrmCupon[]
+  interacciones    CrmInteraccion[]
+  oportunidades    CrmOportunidad[]
+  campana_envios   CrmCampanaEnvio[]
+
+  @@map("clientes")
+}
+
+model TipoVehiculo {
+  id               Int              @id @default(autoincrement())
+  nombre           String           @db.VarChar(60)
+  estado           Int              @default(1)
+  vehiculos        Vehiculo[]
+  servicio_precios ServicioPrecio[]
+
+  @@map("tipos_vehiculo")
+}
+
+model Vehiculo {
+  id               Int           @id @default(autoincrement())
+  cliente_id       Int
+  placa            String        @db.VarChar(15)
+  marca            String?       @db.VarChar(50)
+  modelo           String?       @db.VarChar(50)
+  color            String?       @db.VarChar(30)
+  anio             Int?
+  tipo_vehiculo_id Int?
+  notas            String?       @db.VarChar(255)
+  estado           Int           @default(1)
+  created_at       DateTime      @default(now())
+  cliente          Cliente       @relation(fields: [cliente_id], references: [id], onDelete: Cascade)
+  tipo_vehiculo    TipoVehiculo? @relation(fields: [tipo_vehiculo_id], references: [id], onDelete: SetNull)
+  ordenes          Orden[]
+  citas            Cita[]
+
+  @@map("vehiculos")
+}
+
+model CategoriaServicio {
+  id        Int        @id @default(autoincrement())
+  nombre    String     @db.VarChar(80)
+  estado    Int        @default(1)
+  servicios Servicio[]
+
+  @@map("categorias_servicio")
+}
+
+model Servicio {
+  id           Int                @id @default(autoincrement())
+  categoria_id Int?
+  nombre       String             @db.VarChar(120)
+  descripcion  String?            @db.VarChar(255)
+  precio       Decimal            @default(0) @db.Decimal(12, 2)
+  duracion_min Int                @default(30)
+  comision_pct Decimal            @default(0) @db.Decimal(5, 2)
+  estado       Int                @default(1)
+  categoria    CategoriaServicio? @relation(fields: [categoria_id], references: [id], onDelete: SetNull)
+  precios      ServicioPrecio[]
+  citas        Cita[]
+  paquetes     Paquete[]
+
+  @@map("servicios")
+}
+
+model ServicioPrecio {
+  servicio_id      Int
+  tipo_vehiculo_id Int
+  precio           Decimal      @db.Decimal(12, 2)
+  servicio         Servicio     @relation(fields: [servicio_id], references: [id], onDelete: Cascade)
+  tipo_vehiculo    TipoVehiculo @relation(fields: [tipo_vehiculo_id], references: [id], onDelete: Cascade)
+
+  @@id([servicio_id, tipo_vehiculo_id])
+  @@map("servicio_precios")
+}
+
+model Empleado {
+  id            Int                @id @default(autoincrement())
+  nombre        String             @db.VarChar(150)
+  documento     String?            @db.VarChar(20)
+  telefono      String?            @db.VarChar(30)
+  cargo         String             @default("Lavador") @db.VarChar(60)
+  sueldo        Decimal            @default(0) @db.Decimal(12, 2)
+  comision_pct  Decimal            @default(0) @db.Decimal(5, 2)
+  fecha_ingreso DateTime?          @db.Date
+  estado        Int                @default(1)
+  ordenes       Orden[]
+  comisiones    ComisionPago[]
+  asistencias   Asistencia[]
+  adelantos     PlanillaAdelanto[]
+  planillas     Planilla[]
+
+  @@map("empleados")
+}
+
+model Proveedor {
+  id        Int        @id @default(autoincrement())
+  nombre    String     @db.VarChar(150)
+  ruc       String?    @db.VarChar(20)
+  contacto  String?    @db.VarChar(100)
+  telefono  String?    @db.VarChar(30)
+  email     String?    @db.VarChar(120)
+  direccion String?    @db.VarChar(200)
+  estado    Int        @default(1)
+  productos Producto[]
+  compras   Compra[]
+
+  @@map("proveedores")
+}
+
+model Producto {
+  id             Int                    @id @default(autoincrement())
+  codigo         String?                @db.VarChar(30)
+  nombre         String                 @db.VarChar(150)
+  proveedor_id   Int?
+  unidad         String                 @default("UND") @db.VarChar(20)
+  precio_compra  Decimal                @default(0) @db.Decimal(12, 2)
+  precio_venta   Decimal                @default(0) @db.Decimal(12, 2)
+  stock          Decimal                @default(0) @db.Decimal(12, 2)
+  stock_minimo   Decimal                @default(0) @db.Decimal(12, 2)
+  se_vende       Int                    @default(1)
+  estado         Int                    @default(1)
+  proveedor      Proveedor?             @relation(fields: [proveedor_id], references: [id], onDelete: SetNull)
+  movimientos    MovimientoInventario[]
+  compra_detalle CompraDetalle[]
+
+  @@map("productos")
+}
+
+model MovimientoInventario {
+  id          Int      @id @default(autoincrement())
+  producto_id Int
+  tipo        String   @db.VarChar(20)
+  cantidad    Decimal  @db.Decimal(12, 2)
+  motivo      String?  @db.VarChar(150)
+  usuario_id  Int?
+  created_at  DateTime @default(now())
+  producto    Producto @relation(fields: [producto_id], references: [id], onDelete: Cascade)
+
+  @@map("movimientos_inventario")
+}
+
+model Orden {
+  id            Int              @id @default(autoincrement())
+  codigo        String           @unique @db.VarChar(20)
+  tipo          String           @default("servicio") @db.VarChar(20)
+  cliente_id    Int?
+  vehiculo_id   Int?
+  empleado_id   Int?
+  usuario_id    Int?
+  estado        String           @default("pendiente") @db.VarChar(20)
+  subtotal      Decimal          @default(0) @db.Decimal(12, 2)
+  descuento     Decimal          @default(0) @db.Decimal(12, 2)
+  impuesto      Decimal          @default(0) @db.Decimal(12, 2)
+  total         Decimal          @default(0) @db.Decimal(12, 2)
+  metodo_pago   String?          @db.VarChar(20)
+  pagado        Int              @default(0)
+  fecha_pago    DateTime?
+  observaciones String?          @db.VarChar(255)
+  fecha_ingreso DateTime         @default(now())
+  fecha_fin     DateTime?
+  cliente       Cliente?         @relation(fields: [cliente_id], references: [id], onDelete: SetNull)
+  vehiculo      Vehiculo?        @relation(fields: [vehiculo_id], references: [id], onDelete: SetNull)
+  empleado      Empleado?        @relation(fields: [empleado_id], references: [id], onDelete: SetNull)
+  detalles      OrdenDetalle[]
+  pagos         OrdenPago[]
+  comprobantes  Comprobante[]
+  encuesta      CrmEncuesta?
+  paquete_uso   OrdenPaqueteUso?
+
+  @@index([estado])
+  @@index([fecha_ingreso])
+  @@map("ordenes")
+}
+
+model OrdenDetalle {
+  id          Int     @id @default(autoincrement())
+  orden_id    Int
+  tipo        String  @db.VarChar(20)
+  item_id     Int
+  descripcion String  @db.VarChar(180)
+  cantidad    Decimal @default(1) @db.Decimal(10, 2)
+  precio      Decimal @default(0) @db.Decimal(12, 2)
+  subtotal    Decimal @default(0) @db.Decimal(12, 2)
+  orden       Orden   @relation(fields: [orden_id], references: [id], onDelete: Cascade)
+
+  @@map("orden_detalle")
+}
+
+model Cita {
+  id          Int       @id @default(autoincrement())
+  cliente_id  Int
+  vehiculo_id Int?
+  servicio_id Int?
+  fecha_hora  DateTime
+  estado      String    @default("programada") @db.VarChar(20)
+  notas       String?   @db.VarChar(255)
+  created_at  DateTime  @default(now())
+  cliente     Cliente   @relation(fields: [cliente_id], references: [id], onDelete: Cascade)
+  vehiculo    Vehiculo? @relation(fields: [vehiculo_id], references: [id], onDelete: SetNull)
+  servicio    Servicio? @relation(fields: [servicio_id], references: [id], onDelete: SetNull)
+
+  @@map("citas")
+}
+
+model Caja {
+  id             Int       @id @default(autoincrement())
+  usuario_id     Int
+  monto_inicial  Decimal   @default(0) @db.Decimal(12, 2)
+  monto_final    Decimal?  @db.Decimal(12, 2)
+  monto_esperado Decimal?  @db.Decimal(12, 2)
+  fecha_apertura DateTime  @default(now())
+  fecha_cierre   DateTime?
+  estado         String    @default("abierta") @db.VarChar(20)
+  observaciones  String?   @db.VarChar(255)
+
+  @@map("cajas")
+}
+
+model Gasto {
+  id         Int      @id @default(autoincrement())
+  fecha      DateTime @db.Date
+  categoria  String   @default("Otros") @db.VarChar(60)
+  concepto   String   @db.VarChar(180)
+  monto      Decimal  @default(0) @db.Decimal(12, 2)
+  usuario_id Int?
+  created_at DateTime @default(now())
+
+  @@map("gastos")
+}
+
+model Bitacora {
+  id         Int      @id @default(autoincrement())
+  usuario_id Int?
+  usuario    String?  @db.VarChar(50)
+  accion     String   @db.VarChar(60)
+  detalle    String?  @db.VarChar(255)
+  ip         String?  @db.VarChar(45)
+  created_at DateTime @default(now())
+
+  @@map("bitacora")
+}
+
+model Paquete {
+  id               Int              @id @default(autoincrement())
+  nombre           String           @db.VarChar(120)
+  descripcion      String?          @db.VarChar(255)
+  servicio_id      Int
+  usos             Int              @default(4)
+  precio           Decimal          @default(0) @db.Decimal(12, 2)
+  vigencia_dias    Int              @default(90)
+  estado           Int              @default(1)
+  servicio         Servicio         @relation(fields: [servicio_id], references: [id])
+  cliente_paquetes ClientePaquete[]
+
+  @@map("paquetes")
+}
+
+model ClientePaquete {
+  id             Int               @id @default(autoincrement())
+  cliente_id     Int
+  paquete_id     Int
+  servicio_id    Int
+  nombre         String            @db.VarChar(120)
+  usos_total     Int
+  usos_restantes Int
+  precio_pagado  Decimal           @default(0) @db.Decimal(12, 2)
+  metodo_pago    String            @default("efectivo") @db.VarChar(20)
+  fecha_compra   DateTime          @default(now())
+  fecha_vence    DateTime?         @db.Date
+  usuario_id     Int?
+  cliente        Cliente           @relation(fields: [cliente_id], references: [id], onDelete: Cascade)
+  paquete        Paquete           @relation(fields: [paquete_id], references: [id])
+  usos_orden     OrdenPaqueteUso[]
+
+  @@map("cliente_paquetes")
+}
+
+model OrdenPaqueteUso {
+  orden_id           Int            @id
+  cliente_paquete_id Int
+  orden              Orden          @relation(fields: [orden_id], references: [id], onDelete: Cascade)
+  cliente_paquete    ClientePaquete @relation(fields: [cliente_paquete_id], references: [id], onDelete: Cascade)
+
+  @@map("orden_paquete_uso")
+}
+
+model Compra {
+  id           Int             @id @default(autoincrement())
+  proveedor_id Int?
+  fecha        DateTime        @db.Date
+  nro_doc      String?         @db.VarChar(40)
+  condicion    String          @default("contado") @db.VarChar(20)
+  vence        DateTime?       @db.Date
+  pagado       Decimal         @default(0) @db.Decimal(12, 2)
+  total        Decimal         @default(0) @db.Decimal(12, 2)
+  notas        String?         @db.VarChar(255)
+  usuario_id   Int?
+  created_at   DateTime        @default(now())
+  proveedor    Proveedor?      @relation(fields: [proveedor_id], references: [id], onDelete: SetNull)
+  detalles     CompraDetalle[]
+  pagos        CompraPago[]
+
+  @@map("compras")
+}
+
+model CompraDetalle {
+  id          Int      @id @default(autoincrement())
+  compra_id   Int
+  producto_id Int
+  cantidad    Decimal  @db.Decimal(12, 2)
+  costo       Decimal  @db.Decimal(12, 2)
+  subtotal    Decimal  @db.Decimal(12, 2)
+  compra      Compra   @relation(fields: [compra_id], references: [id], onDelete: Cascade)
+  producto    Producto @relation(fields: [producto_id], references: [id])
+
+  @@map("compra_detalle")
+}
+
+model ComisionPago {
+  id          Int      @id @default(autoincrement())
+  empleado_id Int
+  desde       DateTime @db.Date
+  hasta       DateTime @db.Date
+  ventas      Decimal  @default(0) @db.Decimal(12, 2)
+  monto       Decimal  @db.Decimal(12, 2)
+  usuario_id  Int?
+  created_at  DateTime @default(now())
+  empleado    Empleado @relation(fields: [empleado_id], references: [id], onDelete: Cascade)
+
+  @@map("comisiones_pagos")
+}
+
+model IaConfig {
+  clave String  @id @db.VarChar(40)
+  valor String? @db.Text
+
+  @@map("ia_config")
+}
+
+model IaConsulta {
+  id         Int      @id @default(autoincrement())
+  usuario_id Int
+  pregunta   String   @db.VarChar(500)
+  titulo     String?  @db.VarChar(160)
+  sql_texto  String   @db.Text
+  grafico    String?  @db.VarChar(255)
+  favorito   Int      @default(0)
+  veces      Int      @default(1)
+  creado_en  DateTime @default(now())
+  ultimo_uso DateTime @default(now())
+
+  @@index([usuario_id, favorito])
+  @@map("ia_consultas")
+}
+
+model CrmConfig {
+  id              Int       @id @default(1)
+  programa_activo Int       @default(1)
+  monto_por_punto Decimal   @default(10) @db.Decimal(10, 2)
+  valor_punto     Decimal   @default(0.50) @db.Decimal(10, 2)
+  puntos_minimo   Int       @default(50)
+  puntos_desde    DateTime? @db.Date
+  vip_visitas     Int       @default(10)
+  vip_monto       Decimal   @default(1000) @db.Decimal(12, 2)
+  dias_riesgo     Int       @default(45)
+  dias_inactivo   Int       @default(90)
+  prefijo_pais    String    @default("51") @db.VarChar(5)
+  msg_cumple      String?   @db.Text
+  msg_riesgo      String?   @db.Text
+  msg_encuesta    String?   @db.Text
+
+  @@map("crm_config")
+}
+
+model CrmPunto {
+  id         Int      @id @default(autoincrement())
+  cliente_id Int
+  orden_id   Int?
+  tipo       String   @db.VarChar(20)
+  puntos     Int
+  detalle    String?  @db.VarChar(200)
+  usuario_id Int?
+  created_at DateTime @default(now())
+  cliente    Cliente  @relation(fields: [cliente_id], references: [id], onDelete: Cascade)
+
+  @@unique([orden_id, tipo])
+  @@index([cliente_id])
+  @@map("crm_puntos")
+}
+
+model CrmCupon {
+  id            Int       @id @default(autoincrement())
+  codigo        String    @unique @db.VarChar(30)
+  descripcion   String?   @db.VarChar(150)
+  tipo          String    @default("porcentaje") @db.VarChar(20)
+  valor         Decimal   @db.Decimal(10, 2)
+  cliente_id    Int?
+  vigente_hasta DateTime? @db.Date
+  usos_max      Int       @default(1)
+  usos          Int       @default(0)
+  estado        Int       @default(1)
+  origen        String    @default("manual") @db.VarChar(20)
+  created_at    DateTime  @default(now())
+  cliente       Cliente?  @relation(fields: [cliente_id], references: [id], onDelete: Cascade)
+
+  @@map("crm_cupones")
+}
+
+model CrmInteraccion {
+  id                Int       @id @default(autoincrement())
+  cliente_id        Int
+  tipo              String    @default("nota") @db.VarChar(20)
+  asunto            String    @db.VarChar(150)
+  detalle           String?   @db.Text
+  seguimiento_fecha DateTime? @db.Date
+  seguimiento_hecho Int       @default(0)
+  usuario_id        Int?
+  created_at        DateTime  @default(now())
+  cliente           Cliente   @relation(fields: [cliente_id], references: [id], onDelete: Cascade)
+
+  @@index([cliente_id])
+  @@index([seguimiento_hecho, seguimiento_fecha])
+  @@map("crm_interacciones")
+}
+
+model CrmOportunidad {
+  id         Int      @id @default(autoincrement())
+  nombre     String   @db.VarChar(150)
+  telefono   String?  @db.VarChar(30)
+  email      String?  @db.VarChar(120)
+  interes    String?  @db.VarChar(150)
+  origen     String?  @db.VarChar(40)
+  valor_est  Decimal  @default(0) @db.Decimal(12, 2)
+  etapa      String   @default("nuevo") @db.VarChar(20)
+  cliente_id Int?
+  notas      String?  @db.Text
+  usuario_id Int?
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+  cliente    Cliente? @relation(fields: [cliente_id], references: [id], onDelete: SetNull)
+
+  @@index([etapa])
+  @@map("crm_oportunidades")
+}
+
+model CrmCampana {
+  id         Int               @id @default(autoincrement())
+  nombre     String            @db.VarChar(120)
+  segmento   String            @db.VarChar(30)
+  canal      String            @default("whatsapp") @db.VarChar(20)
+  mensaje    String            @db.Text
+  total      Int               @default(0)
+  usuario_id Int?
+  created_at DateTime          @default(now())
+  envios     CrmCampanaEnvio[]
+
+  @@map("crm_campanas")
+}
+
+model CrmCampanaEnvio {
+  id         Int        @id @default(autoincrement())
+  campana_id Int
+  cliente_id Int
+  enviado    Int        @default(0)
+  enviado_at DateTime?
+  campana    CrmCampana @relation(fields: [campana_id], references: [id], onDelete: Cascade)
+  cliente    Cliente    @relation(fields: [cliente_id], references: [id], onDelete: Cascade)
+
+  @@unique([campana_id, cliente_id])
+  @@map("crm_campana_envios")
+}
+
+model CrmEncuesta {
+  id            Int       @id @default(autoincrement())
+  orden_id      Int       @unique
+  cliente_id    Int?
+  token         String    @unique @db.VarChar(40)
+  puntaje       Int?
+  recomendaria  Int?
+  comentario    String?   @db.VarChar(500)
+  respondido_at DateTime?
+  created_at    DateTime  @default(now())
+  orden         Orden     @relation(fields: [orden_id], references: [id], onDelete: Cascade)
+
+  @@map("crm_encuestas")
+}
+
+model OrdenPago {
+  id         Int      @id @default(autoincrement())
+  orden_id   Int
+  monto      Decimal  @db.Decimal(12, 2)
+  propina    Decimal  @default(0) @db.Decimal(12, 2)
+  metodo     String   @default("efectivo") @db.VarChar(20)
+  referencia String?  @db.VarChar(80)
+  fecha      DateTime @default(now())
+  usuario_id Int?
+  anulado    Int      @default(0)
+  orden      Orden    @relation(fields: [orden_id], references: [id], onDelete: Cascade)
+
+  @@index([orden_id])
+  @@index([fecha])
+  @@map("orden_pagos")
+}
+
+model Recepcion {
+  id            Int      @id @default(autoincrement())
+  orden_id      Int?
+  cliente_id    Int?
+  vehiculo_id   Int?
+  placa         String   @db.VarChar(20)
+  combustible   Int      @default(50)
+  kilometraje   Int?
+  checklist     String?  @db.Text
+  danos         String?  @db.Text
+  fotos         String?  @db.Text
+  firma         String?  @db.VarChar(120)
+  observaciones String?  @db.VarChar(500)
+  usuario_id    Int?
+  created_at    DateTime @default(now())
+
+  @@index([placa])
+  @@index([orden_id])
+  @@map("recepciones")
+}
+
+model Cotizacion {
+  id               Int                 @id @default(autoincrement())
+  codigo           String              @unique @db.VarChar(20)
+  cliente_id       Int?
+  nombre           String?             @db.VarChar(150)
+  telefono         String?             @db.VarChar(30)
+  placa            String?             @db.VarChar(20)
+  tipo_vehiculo_id Int?
+  estado           String              @default("borrador") @db.VarChar(20)
+  vence            DateTime?           @db.Date
+  subtotal         Decimal             @default(0) @db.Decimal(12, 2)
+  descuento        Decimal             @default(0) @db.Decimal(12, 2)
+  impuesto         Decimal             @default(0) @db.Decimal(12, 2)
+  total            Decimal             @default(0) @db.Decimal(12, 2)
+  observaciones    String?             @db.VarChar(500)
+  orden_id         Int?
+  usuario_id       Int?
+  created_at       DateTime            @default(now())
+  detalles         CotizacionDetalle[]
+
+  @@index([estado])
+  @@index([created_at])
+  @@map("cotizaciones")
+}
+
+model CotizacionDetalle {
+  id            Int        @id @default(autoincrement())
+  cotizacion_id Int
+  tipo          String     @db.VarChar(20)
+  item_id       Int
+  descripcion   String     @db.VarChar(180)
+  cantidad      Decimal    @default(1) @db.Decimal(10, 2)
+  precio        Decimal    @default(0) @db.Decimal(12, 2)
+  subtotal      Decimal    @default(0) @db.Decimal(12, 2)
+  cotizacion    Cotizacion @relation(fields: [cotizacion_id], references: [id], onDelete: Cascade)
+
+  @@map("cotizacion_detalle")
+}
+
+model ComprobanteSerie {
+  tipo        String @id @db.VarChar(20)
+  serie       String @db.VarChar(6)
+  correlativo Int    @default(0)
+
+  @@map("comprobante_series")
+}
+
+model Comprobante {
+  id           Int      @id @default(autoincrement())
+  orden_id     Int
+  tipo         String   @db.VarChar(20)
+  serie        String   @db.VarChar(6)
+  numero       Int
+  doc_tipo     String?  @db.VarChar(10)
+  doc_numero   String?  @db.VarChar(20)
+  razon_social String?  @db.VarChar(150)
+  direccion    String?  @db.VarChar(200)
+  subtotal     Decimal  @default(0) @db.Decimal(12, 2)
+  impuesto     Decimal  @default(0) @db.Decimal(12, 2)
+  total        Decimal  @default(0) @db.Decimal(12, 2)
+  anulado      Int      @default(0)
+  usuario_id   Int?
+  fecha        DateTime @default(now())
+  orden        Orden    @relation(fields: [orden_id], references: [id], onDelete: Cascade)
+
+  @@unique([tipo, serie, numero])
+  @@index([orden_id])
+  @@index([fecha])
+  @@map("comprobantes")
+}
+
+model CompraPago {
+  id         Int      @id @default(autoincrement())
+  compra_id  Int
+  monto      Decimal  @db.Decimal(12, 2)
+  metodo     String   @default("efectivo") @db.VarChar(20)
+  referencia String?  @db.VarChar(80)
+  fecha      DateTime @default(now())
+  usuario_id Int?
+  compra     Compra   @relation(fields: [compra_id], references: [id], onDelete: Cascade)
+
+  @@index([compra_id])
+  @@map("compra_pagos")
+}
+
+model AsistenciaConfig {
+  id             Int    @id @default(1)
+  hora_entrada   String @default("08:00:00") @db.VarChar(8)
+  hora_salida    String @default("17:00:00") @db.VarChar(8)
+  tolerancia     Int    @default(10)
+  dias_laborales String @default("1,2,3,4,5,6") @db.VarChar(20)
+  dias_mes       Int    @default(30)
+  desc_tardanza  Int    @default(1)
+
+  @@map("asistencia_config")
+}
+
+model Asistencia {
+  id          Int      @id @default(autoincrement())
+  empleado_id Int
+  fecha       DateTime @db.Date
+  entrada     String?  @db.VarChar(8)
+  salida      String?  @db.VarChar(8)
+  estado      String   @default("presente") @db.VarChar(20)
+  min_tarde   Int      @default(0)
+  usuario_id  Int?
+  empleado    Empleado @relation(fields: [empleado_id], references: [id], onDelete: Cascade)
+
+  @@unique([empleado_id, fecha])
+  @@index([fecha])
+  @@map("asistencias")
+}
+
+model PlanillaAdelanto {
+  id          Int      @id @default(autoincrement())
+  empleado_id Int
+  fecha       DateTime @db.Date
+  monto       Decimal  @db.Decimal(12, 2)
+  motivo      String?  @db.VarChar(150)
+  planilla_id Int?
+  usuario_id  Int?
+  empleado    Empleado @relation(fields: [empleado_id], references: [id], onDelete: Cascade)
+
+  @@index([empleado_id])
+  @@map("planilla_adelantos")
+}
+
+model Planilla {
+  id            Int      @id @default(autoincrement())
+  periodo       String   @db.Char(7)
+  empleado_id   Int
+  sueldo        Decimal  @default(0) @db.Decimal(12, 2)
+  faltas        Int      @default(0)
+  min_tarde     Int      @default(0)
+  desc_faltas   Decimal  @default(0) @db.Decimal(12, 2)
+  desc_tardanza Decimal  @default(0) @db.Decimal(12, 2)
+  adelantos     Decimal  @default(0) @db.Decimal(12, 2)
+  comisiones    Decimal  @default(0) @db.Decimal(12, 2)
+  neto          Decimal  @default(0) @db.Decimal(12, 2)
+  usuario_id    Int?
+  created_at    DateTime @default(now())
+  empleado      Empleado @relation(fields: [empleado_id], references: [id], onDelete: Cascade)
+
+  @@unique([periodo, empleado_id])
+  @@map("planillas")
+}
